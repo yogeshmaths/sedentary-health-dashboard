@@ -5,6 +5,8 @@
 Built by **Yogesh Kumar Singh**, PhD Scholar at **IIT Kharagpur (CSE)**  
 Research Title: *"Modelling Physiological and Cognitive Health for Sedentary Lifestyle using Data Analytics"*
 
+🚀 **Live Demo:** [yogesh-sedentary-dashboard.streamlit.app](https://yogesh-sedentary-dashboard.streamlit.app)
+
 ---
 
 ## Features

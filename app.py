@@ -589,17 +589,451 @@ if page == "🏥 Risk Calculator":
 
 
 # ═════════════════════════════════════════════════════════════
-
-# =============================================================
-# PAGE 2 -- Research Insights (coming in next commit)
-# =============================================================
+# PAGE 2 — RESEARCH INSIGHTS
+# ═════════════════════════════════════════════════════════════
 elif page == "📊 Research Insights":
-    st.title("📊 Research Insights")
-    st.info("🔧 Statistical findings coming soon")
 
-# =============================================================
-# PAGE 3 -- About the Research (coming in next commit)
-# =============================================================
+    st.markdown("## Research Insights")
+    st.markdown(
+        "<span style='color:#9e9e9e; font-size:0.92rem;'>Statistical findings from the IIT Kharagpur cohort study "
+        f"(N={STUDY_N}, age {STUDY_AGE_RANGE} years)</span>",
+        unsafe_allow_html=True,
+    )
+    st.markdown("<hr class='custom-divider'>", unsafe_allow_html=True)
+
+    # ── ROW 1 ────────────────────────────────────────────────
+    r1c1, r1c2 = st.columns(2, gap="medium")
+
+    with r1c1:
+        # Variable importance bar chart
+        sorted_pairs = sorted(zip(RF_IMPORTANCE, RF_VARS), reverse=True)
+        sorted_imp, sorted_vars = zip(*sorted_pairs)
+
+        # Gradient from blue (low) to red (high importance)
+        imp_colors = [
+            f"rgb({int(21+233*(v/max(sorted_imp)))}, {int(101-101*(v/max(sorted_imp)))}, {int(192-192*(v/max(sorted_imp)))})"
+            for v in sorted_imp
+        ]
+
+        fig_rf = go.Figure(
+            go.Bar(
+                y=list(sorted_vars),
+                x=list(sorted_imp),
+                orientation="h",
+                marker=dict(color=list(imp_colors)),
+                text=[f"{v}%" for v in sorted_imp],
+                textposition="outside",
+                textfont=dict(size=11, color="#e0e0e0"),
+            )
+        )
+        fig_rf.update_layout(
+            title=dict(text="Variable Importance in Predicting Health Outcomes", font=dict(size=13), x=0),
+            template="plotly_dark",
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            margin=dict(l=10, r=50, t=45, b=40),
+            height=310,
+            xaxis=dict(
+                title="Importance (%)",
+                range=[0, 35],
+                gridcolor="#2a2f45",
+                title_font=dict(size=11),
+            ),
+            yaxis=dict(tickfont=dict(size=11)),
+            showlegend=False,
+        )
+        st.plotly_chart(fig_rf, use_container_width=True, config={"displayModeBar": False})
+
+    with r1c2:
+        # Mental fatigue by sedentary category
+        cat_colors = [C_LOW, C_MOD, C_HIGH]
+        fig_mf = go.Figure(
+            go.Bar(
+                x=["Low\n(<8h/day)", "Moderate\n(8–10h/day)", "High\n(>10h/day)"],
+                y=MENTAL_FATIGUE_BY_CAT,
+                marker_color=cat_colors,
+                text=[f"{v}/10" for v in MENTAL_FATIGUE_BY_CAT],
+                textposition="outside",
+                textfont=dict(size=13, color="#e0e0e0"),
+                width=0.5,
+            )
+        )
+        fig_mf.add_hline(
+            y=MEAN_MENTAL_FATIGUE,
+            line_dash="dot",
+            line_color="#9e9e9e",
+            annotation_text=f"Study mean: {MEAN_MENTAL_FATIGUE}",
+            annotation_font=dict(size=10, color="#9e9e9e"),
+            annotation_position="bottom right",
+        )
+        fig_mf.update_layout(
+            title=dict(text="Mental Fatigue Score by Sedentary Category", font=dict(size=13), x=0),
+            template="plotly_dark",
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            margin=dict(l=10, r=20, t=45, b=40),
+            height=310,
+            yaxis=dict(
+                title="Mental Fatigue (1–10)",
+                range=[0, 10.5],
+                gridcolor="#2a2f45",
+                title_font=dict(size=11),
+            ),
+            xaxis=dict(tickfont=dict(size=11)),
+            showlegend=False,
+        )
+        st.plotly_chart(fig_mf, use_container_width=True, config={"displayModeBar": False})
+
+    # ── ROW 2 ────────────────────────────────────────────────
+    r2c1, r2c2 = st.columns(2, gap="medium")
+
+    with r2c1:
+        # Correlation heatmap
+        corr_labels = ["Sitting\nTime", "Mental\nFatigue", "Stress\nScore",
+                       "Conc.\nProblems", "Lower\nBack Pain", "Physical\nActivity", "Sleep\nQuality"]
+        fig_hm = go.Figure(
+            go.Heatmap(
+                z=CORR_MATRIX,
+                x=corr_labels,
+                y=corr_labels,
+                colorscale=[
+                    [0.0,  "#1565c0"],
+                    [0.35, "#283593"],
+                    [0.5,  "#1e2130"],
+                    [0.65, "#b71c1c"],
+                    [1.0,  "#f44336"],
+                ],
+                zmid=0,
+                zmin=-1,
+                zmax=1,
+                text=np.round(CORR_MATRIX, 2),
+                texttemplate="%{text}",
+                textfont=dict(size=9, color="#e0e0e0"),
+                colorbar=dict(
+                    tickfont=dict(size=9, color="#9e9e9e"),
+                    title=dict(text="r", font=dict(size=10)),
+                    thickness=12,
+                ),
+            )
+        )
+        fig_hm.update_layout(
+            title=dict(text="Pearson Correlation Matrix", font=dict(size=13), x=0),
+            template="plotly_dark",
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            margin=dict(l=10, r=10, t=45, b=10),
+            height=360,
+            xaxis=dict(tickfont=dict(size=9), side="bottom"),
+            yaxis=dict(tickfont=dict(size=9), autorange="reversed"),
+        )
+        st.plotly_chart(fig_hm, use_container_width=True, config={"displayModeBar": False})
+
+    with r2c2:
+        # Musculoskeletal pain prevalence — horizontal bars
+        pain_colors = [C_HIGH if v >= 50 else (C_MOD if v >= 35 else C_ACCENT) for v in PAIN_PREV]
+        fig_pain = go.Figure(
+            go.Bar(
+                y=PAIN_SITES,
+                x=PAIN_PREV,
+                orientation="h",
+                marker=dict(color=pain_colors),
+                text=[f"{v}%" for v in PAIN_PREV],
+                textposition="outside",
+                textfont=dict(size=12, color="#e0e0e0"),
+                width=0.55,
+            )
+        )
+        fig_pain.update_layout(
+            title=dict(text="Musculoskeletal Pain Prevalence (%)", font=dict(size=13), x=0),
+            template="plotly_dark",
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            margin=dict(l=10, r=60, t=45, b=40),
+            height=310,
+            xaxis=dict(
+                title="Prevalence (%)",
+                range=[0, 75],
+                gridcolor="#2a2f45",
+                title_font=dict(size=11),
+            ),
+            yaxis=dict(tickfont=dict(size=12)),
+            showlegend=False,
+        )
+        st.plotly_chart(fig_pain, use_container_width=True, config={"displayModeBar": False})
+
+    # ── ROW 3 ────────────────────────────────────────────────
+    r3c1, r3c2 = st.columns(2, gap="medium")
+
+    with r3c1:
+        # SRI distribution pie
+        pie_colors = [C_LOW, C_MOD, C_HIGH]
+        fig_pie = go.Figure(
+            go.Pie(
+                labels=SRI_LABELS,
+                values=SRI_COUNTS_DIST,
+                hole=0.45,
+                marker=dict(colors=pie_colors, line=dict(color="#0e1117", width=2)),
+                textinfo="label+percent",
+                textfont=dict(size=12, color="#e0e0e0"),
+                hovertemplate="<b>%{label}</b><br>Count: %{value}<br>Share: %{percent}<extra></extra>",
+            )
+        )
+        fig_pie.add_annotation(
+            text=f"<b>{STUDY_N}</b><br><span style='font-size:10px'>participants</span>",
+            x=0.5, y=0.5,
+            font=dict(size=14, color="#e0e0e0"),
+            showarrow=False,
+        )
+        fig_pie.update_layout(
+            title=dict(text="Sedentary Risk Index (SRI) Distribution", font=dict(size=13), x=0),
+            template="plotly_dark",
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            margin=dict(l=10, r=10, t=45, b=20),
+            height=320,
+            legend=dict(
+                orientation="v",
+                x=1.0, y=0.5,
+                font=dict(size=11, color="#9e9e9e"),
+            ),
+            showlegend=True,
+        )
+        st.plotly_chart(fig_pie, use_container_width=True, config={"displayModeBar": False})
+
+    with r3c2:
+        # Regression coefficients (horizontal bar — diverging)
+        beta_colors = [C_HIGH if b > 0 else C_ACCENT for b in REG_BETAS]
+        fig_reg = go.Figure(
+            go.Bar(
+                y=REG_VARS,
+                x=REG_BETAS,
+                orientation="h",
+                marker=dict(color=beta_colors),
+                text=[f"β = {b:+.2f}" for b in REG_BETAS],
+                textposition="outside",
+                textfont=dict(size=11, color="#e0e0e0"),
+                width=0.55,
+            )
+        )
+        fig_reg.add_vline(x=0, line_color="#555", line_width=1.5)
+        fig_reg.update_layout(
+            title=dict(
+                text=f"Multiple Regression: Mental Fatigue Predictors (R²={REG_R2})",
+                font=dict(size=12), x=0,
+            ),
+            template="plotly_dark",
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            margin=dict(l=10, r=70, t=50, b=40),
+            height=310,
+            xaxis=dict(
+                title="Standardised β Coefficient",
+                range=[-0.38, 0.62],
+                gridcolor="#2a2f45",
+                zeroline=False,
+                title_font=dict(size=11),
+            ),
+            yaxis=dict(tickfont=dict(size=11)),
+            showlegend=False,
+        )
+        st.plotly_chart(fig_reg, use_container_width=True, config={"displayModeBar": False})
+
+    # ── Summary stat bar ─────────────────────────────────────
+    st.markdown("<hr class='custom-divider'>", unsafe_allow_html=True)
+    st.markdown("<div class='section-header'>Key Statistics at a Glance</div>", unsafe_allow_html=True)
+
+    sc1, sc2, sc3, sc4, sc5 = st.columns(5)
+    stat_cards = [
+        ("Mean Sitting Time", f"{MEAN_SITTING}h/day", f"±{SD_SITTING}h SD", C_HIGH),
+        ("Sedentary High Risk", "41.7%", ">10h/day sitting", C_MOD),
+        ("Mental Fatigue (High)", "8.1/10", "vs. 4.8 for Low group", C_HIGH),
+        ("Lower Back Pain", "58%", "Most prevalent site", C_MOD),
+        ("Model R²", "0.62", "Mental fatigue prediction", C_ACCENT),
+    ]
+    for col, (lbl, val, sub, clr) in zip([sc1, sc2, sc3, sc4, sc5], stat_cards):
+        with col:
+            st.markdown(metric_card_html(lbl, val, sub, clr), unsafe_allow_html=True)
+
+
+# ═════════════════════════════════════════════════════════════
+# PAGE 3 — ABOUT THE RESEARCH
+# ═════════════════════════════════════════════════════════════
 elif page == "🔬 About the Research":
-    st.title("🔬 About the Research")
-    st.info("🔧 Study background coming soon")
+
+    st.markdown("## About the Research")
+    st.markdown(
+        "<span style='color:#9e9e9e; font-size:0.92rem;'>Study context, methodology, and key findings</span>",
+        unsafe_allow_html=True,
+    )
+    st.markdown("<hr class='custom-divider'>", unsafe_allow_html=True)
+
+    # ── Identity cards ───────────────────────────────────────
+    ic1, ic2, ic3, ic4 = st.columns(4, gap="medium")
+
+    identity_cards = [
+        ("🏛️ Institution", "Indian Institute of Technology Kharagpur", "West Bengal, India — Est. 1951"),
+        ("🧠 Centre", "Rekhi Centre of Excellence for the Science of Happiness", "Department of Computer Science & Engineering"),
+        ("👨‍🔬 Researcher", "Yogesh Kumar Singh", "PhD Scholar, CSE — IIT Kharagpur"),
+        ("📚 Supervisors", "Faculty, IIT Kharagpur", "Rekhi Centre, CSE Department"),
+    ]
+    for col, (icon_lbl, title, sub) in zip([ic1, ic2, ic3, ic4], identity_cards):
+        with col:
+            st.markdown(
+                f"<div class='info-card'>"
+                f"<h4>{icon_lbl}</h4>"
+                f"<p><b style='color:#e0e0e0;'>{title}</b><br>"
+                f"<span style='color:#757575; font-size:0.82rem;'>{sub}</span></p>"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
+
+    st.markdown("<hr class='custom-divider'>", unsafe_allow_html=True)
+
+    ab1, ab2 = st.columns([1.05, 1], gap="large")
+
+    with ab1:
+        # Research topic
+        st.markdown(
+            "<div class='info-card'>"
+            "<h4>📌 Research Title</h4>"
+            "<p style='font-size:1.0rem; color:#e0e0e0; font-weight:600; line-height:1.5;'>"
+            "Modelling Physiological and Cognitive Health for Sedentary Lifestyle using Data Analytics"
+            "</p>"
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
+        # Objectives
+        st.markdown("<div class='section-header'>Research Objectives</div>", unsafe_allow_html=True)
+
+        objectives = [
+            ("Quantify the impact of prolonged sedentary behaviour on physiological health markers "
+             "including musculoskeletal pain, BMI, and cardiovascular proxies."),
+            ("Model the relationship between sedentary lifestyle parameters and cognitive outcomes "
+             "such as mental fatigue, stress, and concentration impairment."),
+            ("Develop and validate a composite Sedentary Risk Index (SRI) using machine learning "
+             "feature importance from Random Forest classification."),
+            ("Identify significant predictors of mental fatigue through multiple linear regression "
+             "and establish standardised effect sizes."),
+            ("Provide evidence-based intervention thresholds to guide occupational health policies "
+             "for knowledge workers and academic professionals."),
+        ]
+        for i, obj in enumerate(objectives, start=1):
+            st.markdown(
+                f"<div class='finding-row'>"
+                f"<div class='finding-num'>0{i}</div>"
+                f"<div class='finding-text'>{obj}</div>"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
+
+    with ab2:
+        # Methodology
+        st.markdown("<div class='section-header'>Methodology Overview</div>", unsafe_allow_html=True)
+
+        methods = [
+            ("📋 Data Collection", f"Cross-sectional survey of {STUDY_N} participants (age {STUDY_AGE_RANGE}), "
+             f"{STUDY_MALE}M/{STUDY_FEMALE}F. Self-reported questionnaires + physical measurements."),
+            ("📏 Instruments", "Validated scales for perceived stress, mental fatigue, and concentration. "
+             "Direct measurements for BMI and sitting time logs."),
+            ("📊 Statistical Analysis", "Pearson correlation analysis, multiple linear regression with "
+             "standardised beta coefficients, bootstrapped confidence intervals."),
+            ("🤖 Machine Learning", "Random Forest classifier for variable importance ranking. "
+             "10-fold cross-validation to prevent overfitting."),
+            ("🧮 Risk Modelling", "Sedentary Risk Index computed from weighted variable importances. "
+             "Three-tier categorisation (Low / Moderate / High risk)."),
+            ("✅ Validation", f"Regression model: R² = {REG_R2} for mental fatigue. "
+             "Significance threshold p < 0.05 across all reported correlations."),
+        ]
+        for icon_lbl, desc in methods:
+            st.markdown(
+                f"<div class='info-card' style='padding:0.85rem 1.1rem; margin-bottom:0.6rem;'>"
+                f"<h4 style='margin-bottom:0.3rem;'>{icon_lbl}</h4>"
+                f"<p style='font-size:0.83rem;'>{desc}</p>"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
+
+    st.markdown("<hr class='custom-divider'>", unsafe_allow_html=True)
+
+    # ── Key findings grid ────────────────────────────────────
+    st.markdown("<div class='section-header'>Key Findings</div>", unsafe_allow_html=True)
+
+    findings = [
+        ("R² = 0.62", "Mental fatigue variance explained by the regression model", C_ACCENT),
+        ("r = 0.73", "Strongest correlation: Sitting time ↔ Lower back pain", C_HIGH),
+        ("r = 0.71", "Sitting time ↔ Mental fatigue (Pearson)", C_HIGH),
+        ("27.8%", "Top RF predictor: Total sitting time", C_MOD),
+        ("41.7%", "Participants with high sedentary behaviour (>10h/day)", C_MOD),
+        ("58%", "Prevalence of lower back pain in the cohort", C_HIGH),
+        ("8.1/10", "Mean mental fatigue in the high sedentary group", C_HIGH),
+        ("-0.49", "Physical activity inversely predicts mental fatigue", C_ACCENT),
+    ]
+
+    f_cols = st.columns(4)
+    for idx, (val, lbl, clr) in enumerate(findings):
+        with f_cols[idx % 4]:
+            st.markdown(metric_card_html(lbl, val, "", clr), unsafe_allow_html=True)
+
+    # ── Sedentary categories table ───────────────────────────
+    st.markdown("<hr class='custom-divider'>", unsafe_allow_html=True)
+    st.markdown("<div class='section-header'>Participant Sedentary Profile</div>", unsafe_allow_html=True)
+
+    tc1, tc2 = st.columns([1.2, 1], gap="large")
+
+    with tc1:
+        tbl_data = {
+            "Category": SED_CATEGORIES,
+            "Participants": SED_COUNTS,
+            "Share (%)": SED_PERCENTS,
+            "Mean Mental Fatigue": MENTAL_FATIGUE_BY_CAT,
+        }
+        df_tbl = pd.DataFrame(tbl_data)
+
+        fig_tbl = go.Figure(
+            go.Table(
+                header=dict(
+                    values=["<b>Category</b>", "<b>n</b>", "<b>Share (%)</b>", "<b>Mental Fatigue</b>"],
+                    fill_color="#1e2130",
+                    font=dict(color="#42a5f5", size=12),
+                    align="left",
+                    line=dict(color="#2a2f45", width=1),
+                    height=32,
+                ),
+                cells=dict(
+                    values=[df_tbl[c].tolist() for c in df_tbl.columns],
+                    fill_color=[
+                        ["rgba(0,200,83,0.08)", "rgba(255,152,0,0.08)", "rgba(244,67,54,0.08)"],
+                        "#161b2e", "#161b2e",
+                        [f"rgba({','.join(str(int(x)) for x in (0,200,83,0.12))})" for _ in range(3)],
+                    ],
+                    font=dict(color="#e0e0e0", size=12),
+                    align="left",
+                    line=dict(color="#2a2f45", width=1),
+                    height=30,
+                ),
+            )
+        )
+        fig_tbl.update_layout(
+            template="plotly_dark",
+            paper_bgcolor="rgba(0,0,0,0)",
+            margin=dict(l=0, r=0, t=10, b=0),
+            height=155,
+        )
+        st.plotly_chart(fig_tbl, use_container_width=True, config={"displayModeBar": False})
+
+    with tc2:
+        st.markdown(
+            "<div class='info-card'>"
+            "<h4>📖 SRI Risk Thresholds</h4>"
+            "<p>"
+            "<span style='color:#00c853;'>●</span> <b>Low Risk</b> (SRI 0–32) &nbsp;— 14 participants (23.3%)<br>"
+            "<span style='color:#ff9800;'>●</span> <b>Moderate Risk</b> (SRI 33–66) — 27 participants (45.0%)<br>"
+            "<span style='color:#f44336;'>●</span> <b>High Risk</b> (SRI 67–100) &nbsp;— 19 participants (31.7%)<br><br>"
+            "The SRI weights each input variable by its Random Forest importance, normalised to a 0–100 scale. "
+            "Thresholds were calibrated against the study cohort's observed mental fatigue and "
+            "musculoskeletal pain outcomes."
+            "</p>"
+            "</div>",
+            unsafe_allow_html=True,
+        )

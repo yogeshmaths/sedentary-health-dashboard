@@ -401,18 +401,205 @@ with st.sidebar:
 
 
 # ═════════════════════════════════════════════════════════════
-
-# =============================================================
-# PAGES  (full implementation in subsequent commits)
-# =============================================================
+# PAGE 1 — RISK CALCULATOR
+# ═════════════════════════════════════════════════════════════
 if page == "🏥 Risk Calculator":
-    st.title("🏥 Sedentary Health Risk Calculator")
-    st.info("🔧 Interactive risk computation coming in next commit")
 
+    st.markdown("## Sedentary Health Risk Calculator")
+    st.markdown(
+        "<span style='color:#9e9e9e; font-size:0.92rem;'>Based on IIT Kharagpur PhD Research — "
+        "enter your daily habits to compute your personalised Sedentary Risk Index (SRI)</span>",
+        unsafe_allow_html=True,
+    )
+    st.markdown("<hr class='custom-divider'>", unsafe_allow_html=True)
+
+    col_inputs, col_results = st.columns([1, 1.05], gap="large")
+
+    # ── Inputs ──────────────────────────────────────────────
+    with col_inputs:
+        st.markdown("<div class='section-header'>Health Parameters</div>", unsafe_allow_html=True)
+
+        sitting = st.slider(
+            "🪑 Daily Sitting Time (hours)",
+            min_value=4.0, max_value=16.0, value=9.0, step=0.5,
+            help="Total hours spent sitting across work, commute, and leisure",
+        )
+        screen = st.slider(
+            "🖥️ Daily Screen Time (hours, leisure)",
+            min_value=1.0, max_value=12.0, value=3.0, step=0.5,
+            help="Recreational screen time excluding work (phone, TV, gaming)",
+        )
+        sleep = st.slider(
+            "😴 Sleep Duration (hours)",
+            min_value=4.0, max_value=10.0, value=7.0, step=0.25,
+            help="Average nightly sleep duration",
+        )
+        stress = st.slider(
+            "😰 Stress Level (1 = calm, 10 = severe)",
+            min_value=1, max_value=10, value=6,
+            help="Self-reported perceived stress on a 1–10 scale",
+        )
+        activity = st.slider(
+            "🏃 Physical Activity (days/week)",
+            min_value=0, max_value=7, value=2,
+            help="Days per week with at least 30 min of moderate-intensity exercise",
+        )
+        bmi = st.slider(
+            "⚖️ BMI (kg/m²)",
+            min_value=15.0, max_value=40.0, value=24.0, step=0.5,
+            help="Body Mass Index — weight(kg) ÷ height(m)²",
+        )
+
+        st.markdown("<hr class='custom-divider'>", unsafe_allow_html=True)
+        st.markdown(
+            "<div style='font-size:0.76rem; color:#616161; line-height:1.6;'>"
+            "<b style='color:#757575;'>Study averages for reference</b><br>"
+            f"Sitting: {MEAN_SITTING}±{SD_SITTING}h &nbsp;|&nbsp; "
+            f"Screen: {MEAN_SCREEN}±{SD_SCREEN}h<br>"
+            f"Sleep: {MEAN_SLEEP}±{SD_SLEEP}h &nbsp;|&nbsp; "
+            f"Stress: {MEAN_STRESS}±{SD_STRESS}<br>"
+            f"Activity: {MEAN_ACTIVITY}±{SD_ACTIVITY} days/wk"
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
+    # ── Results ─────────────────────────────────────────────
+    with col_results:
+        sri = compute_sri(sitting, screen, sleep, stress, activity, bmi)
+        cat_label, cat_color, cat_css = sri_category(sri)
+        mf_pred = predict_mental_fatigue(sitting, stress, activity, sleep, screen)
+
+        st.markdown("<div class='section-header'>Risk Assessment Results</div>", unsafe_allow_html=True)
+
+        # Risk badge
+        st.markdown(
+            f"<div style='text-align:center; margin-bottom:0.5rem;'>"
+            f"<span class='risk-badge {cat_css}'>{cat_label}</span>"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+
+        # Gauge
+        st.plotly_chart(gauge_chart(sri, cat_color), use_container_width=True, config={"displayModeBar": False})
+
+        # Interpretation
+        if sri < 33:
+            interp = (
+                "Your current lifestyle shows <b style='color:#00c853;'>low sedentary risk</b>. "
+                "You are below the study mean for sitting time and maintain adequate physical activity. "
+                "Continue your current habits and monitor regularly."
+            )
+        elif sri < 67:
+            interp = (
+                "Your lifestyle indicates <b style='color:#ff9800;'>moderate sedentary risk</b>. "
+                "This aligns with the most common risk profile in the IIT KGP study (45% of participants). "
+                "Consider increasing daily movement and improving sleep quality to reduce risk."
+            )
+        else:
+            interp = (
+                "Your profile reflects <b style='color:#f44336;'>high sedentary risk</b>. "
+                "Participants in this category showed significantly elevated mental fatigue (avg 8.1/10) "
+                "and higher musculoskeletal pain prevalence. Immediate lifestyle interventions are recommended."
+            )
+
+        st.markdown(
+            f"<div class='info-card' style='margin-top:0;'>"
+            f"<p>{interp}</p>"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+
+        # Metric cards
+        st.markdown("<div class='section-header' style='margin-top:0.5rem;'>Predicted Health Indicators</div>", unsafe_allow_html=True)
+
+        m1, m2, m3 = st.columns(3)
+        mf_color = C_LOW if mf_pred < 5 else (C_MOD if mf_pred < 7.5 else C_HIGH)
+        stress_impact = min(100, round(stress / 10 * 100 + (sitting - 8) * 2.5))
+        stress_impact = max(0, stress_impact)
+        stress_color = C_LOW if stress_impact < 40 else (C_MOD if stress_impact < 70 else C_HIGH)
+        ph_risk = min(100, round(sri * 0.85 + (10 - activity * 10) * 0.15))
+        ph_color = C_LOW if ph_risk < 33 else (C_MOD if ph_risk < 67 else C_HIGH)
+
+        with m1:
+            st.markdown(
+                metric_card_html(
+                    "Predicted Mental Fatigue",
+                    f"{mf_pred:.1f}/10",
+                    f"Study mean: {MEAN_MENTAL_FATIGUE}/10",
+                    mf_color,
+                ),
+                unsafe_allow_html=True,
+            )
+        with m2:
+            st.markdown(
+                metric_card_html(
+                    "Stress Impact Score",
+                    f"{stress_impact}%",
+                    "Composite stress burden",
+                    stress_color,
+                ),
+                unsafe_allow_html=True,
+            )
+        with m3:
+            st.markdown(
+                metric_card_html(
+                    "Physical Health Risk",
+                    f"{ph_risk:.0f}%",
+                    "Musculoskeletal risk proxy",
+                    ph_color,
+                ),
+                unsafe_allow_html=True,
+            )
+
+        # SRI breakdown bar
+        st.markdown("<div class='section-header' style='margin-top:0.2rem;'>SRI Score Breakdown</div>", unsafe_allow_html=True)
+
+        contrib_labels = ["Sitting", "Stress", "Poor Sleep", "Inactivity", "Screen Time", "BMI"]
+        contrib_values = [
+            round(sitting * 0.278, 2),
+            round(stress * 0.224, 2),
+            round((10 - sleep) * 0.156, 2),
+            round((7 - activity) * 0.149, 2),
+            round(screen * 0.103, 2),
+            round(max(bmi - 18.5, 0) * 0.09, 2),
+        ]
+        contrib_colors = [C_HIGH, C_MOD, C_MOD, C_ACCENT, "#ab47bc", "#26a69a"]
+
+        fig_contrib = go.Figure(
+            go.Bar(
+                x=contrib_labels,
+                y=contrib_values,
+                marker_color=contrib_colors,
+                text=[f"{v:.2f}" for v in contrib_values],
+                textposition="outside",
+                textfont=dict(size=10, color="#e0e0e0"),
+            )
+        )
+        fig_contrib.update_layout(
+            template="plotly_dark",
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            margin=dict(l=10, r=10, t=10, b=35),
+            height=175,
+            yaxis=dict(showgrid=True, gridcolor="#2a2f45", title="Weighted Score", title_font=dict(size=10)),
+            xaxis=dict(tickfont=dict(size=10)),
+            showlegend=False,
+        )
+        st.plotly_chart(fig_contrib, use_container_width=True, config={"displayModeBar": False})
+
+
+# ═════════════════════════════════════════════════════════════
+
+# =============================================================
+# PAGE 2 -- Research Insights (coming in next commit)
+# =============================================================
 elif page == "📊 Research Insights":
     st.title("📊 Research Insights")
-    st.info("🔧 Statistical findings from the cohort study coming soon")
+    st.info("🔧 Statistical findings coming soon")
 
+# =============================================================
+# PAGE 3 -- About the Research (coming in next commit)
+# =============================================================
 elif page == "🔬 About the Research":
     st.title("🔬 About the Research")
-    st.info("🔧 Study methodology and background coming soon")
+    st.info("🔧 Study background coming soon")

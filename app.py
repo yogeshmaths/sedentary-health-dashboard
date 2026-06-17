@@ -243,7 +243,7 @@ st.markdown(
 # HELPER FUNCTIONS
 # ─────────────────────────────────────────────────────────────
 
-def compute_sri(sitting, screen, sleep, stress, activity, bmi):
+def compute_sri(sitting, screen, sleep, stress, activity, bmi, gender):
     """
     Compute the Sedentary Risk Index (0–100) using Random Forest
     variable importances as weights.
@@ -256,7 +256,10 @@ def compute_sri(sitting, screen, sleep, stress, activity, bmi):
         screen     0.103  (higher = worse)
         bmi        0.090  (deviation from 18.5 = worse)
     """
+    gender_factor = {"Male":1.0,"Female":0.8,"Other":0.9}[gender]
+
     raw = (
+        gender_factor * 0.5 +
         sitting * 0.278
         + stress * 0.224
         + (10.0 - sleep) * 0.156
@@ -419,6 +422,13 @@ if page == "🏥 Risk Calculator":
     with col_inputs:
         st.markdown("<div class='section-header'>Health Parameters</div>", unsafe_allow_html=True)
 
+        gender = st.selectbox(
+            "👤 Gender",
+            ["Male", "Female", "Other"],
+            index=0,
+            help="Participant gender"
+        )
+
         sitting = st.slider(
             "🪑 Daily Sitting Time (hours)",
             min_value=4.0, max_value=16.0, value=9.0, step=0.5,
@@ -465,7 +475,7 @@ if page == "🏥 Risk Calculator":
 
     # ── Results ─────────────────────────────────────────────
     with col_results:
-        sri = compute_sri(sitting, screen, sleep, stress, activity, bmi)
+        sri = compute_sri(sitting, screen, sleep, stress, activity, bmi, gender)
         cat_label, cat_color, cat_css = sri_category(sri)
         mf_pred = predict_mental_fatigue(sitting, stress, activity, sleep, screen)
 
